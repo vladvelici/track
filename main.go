@@ -26,7 +26,18 @@ func (i *Index) Projects() []string {
 	return projects
 }
 
+// Get the status of a project (last work entry)
+// project must be lowercase
+func (i *Index) Status(project string) *Work {
+	slots, ok := i.ProjectSlots(project)
+	if !ok {
+		return nil
+	}
+	return slots[len(slots)-1]
+}
+
 // Get a list of work slots for project. Same as Index.Slots[<project>]
+// project must be lowercase
 func (i *Index) ProjectSlots(project string) (res []*Work, ok bool) {
 	res, ok = i.Slots[project]
 	return res, ok
@@ -130,59 +141,4 @@ func writeIndex(path string, index *Index) error {
 		return err
 	}
 	return ioutil.WriteFile(path, raw, 0644)
-}
-
-// Creates an empty index and writes the index file.
-func createIndex(path string) (*Index, error) {
-	index := &Index{
-		Slots: make(map[string][]*Work),
-	}
-
-	err := writeIndex(path, index)
-	return index, err
-}
-
-// Delete the index. Ask the user before calling this function.
-func deleteIndex(path string) error {
-	return os.Remove(path)
-}
-
-// Print the current status of the system on the screen.
-func status(index *Index, projects []string) {}
-
-// Start working on a project. Returns true if the state has changed.
-func start(index *Index, project []string) bool { return false }
-
-// Stop working on a project. Returns true if the state has changed.
-func stop(index *Index, project []string) bool { return false }
-
-// Add projects. Returns true if the project wasn't there already.
-// Note: Project names are case-insensitive for simplicity.
-func add(index *Index, projects []string) bool {
-	if len(projects) < 1 {
-		fmt.Println("Please use `track add <project-name> [<project-name> ...]`")
-		return false
-	}
-
-	return false
-}
-
-func rm(index *Index, projects []string) bool {
-	if len(projects) < 1 {
-		fmt.Println("Please use `track rm <project-name> [<project-name> ...]`")
-		return false
-	}
-
-	if !confirm(fmt.Sprintf("Remove projects %s?", projects)) {
-		return false
-	}
-
-	for _, p := range projects {
-		_, ok := index.Slots[p]
-		if ok {
-			return true
-		}
-	}
-
-	return false
 }
