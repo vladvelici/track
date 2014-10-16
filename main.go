@@ -6,47 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 )
 
 const (
 	STORAGE_PATH = "./data.json"
 )
-
-type Index struct {
-	Slots map[string][]*Work
-}
-
-// Get a list of all projects.
-func (i *Index) Projects() []string {
-	projects := make([]string, 0, len(i.Slots))
-	for k, _ := range i.Slots {
-		projects = append(projects, k)
-	}
-	return projects
-}
-
-// Get the status of a project (last work entry)
-// project must be lowercase
-func (i *Index) Status(project string) *Work {
-	slots, ok := i.ProjectSlots(project)
-	if !ok {
-		return nil
-	}
-	return slots[len(slots)-1]
-}
-
-// Get a list of work slots for project. Same as Index.Slots[<project>]
-// project must be lowercase
-func (i *Index) ProjectSlots(project string) (res []*Work, ok bool) {
-	res, ok = i.Slots[project]
-	return res, ok
-}
-
-type Work struct {
-	Start time.Time
-	End   time.Time
-}
 
 func confirm(msg string) bool {
 	fmt.Print(msg)
@@ -73,7 +37,7 @@ func main() {
 
 	// commands that create/delete the index: "rm", "init"
 	switch os.Args[1] {
-	case "rm":
+	case "delete":
 		if !confirm("This will delete the current index.") {
 			return
 		}
@@ -102,21 +66,43 @@ func main() {
 	case "work":
 		fallthrough
 	case "start":
-		write = start(index, os.Args[1:])
+		if len(os.Args) != 3 {
+			fmt.Println("Please use `track start <project-name>`")
+			return
+		}
+		write, err = index.StartWorking(os.Args[2])
+		if err != nil {
+			fmt.Println(err)
+		}
 	case "stop":
-		write = stop(index, os.Args[1:])
+		if len(os.Args) != 3 {
+			fmt.Println("Please use `track stop <project-name>`")
+			return
+		}
+		write, err = index.StopWorking(os.Args[2])
+		if err != nil {
+			fmt.Println(err)
+		}
 	case "add":
-		write = add(index, os.Args[1:])
+		write, err = index.AddProjects(os.Args[2:])
+		if err != nil {
+			fmt.Println(err)
+		}
 	case "rm":
-		write = rm(index, os.Args[1:])
+		if confirm(fmt.Sprintf("Delete projects %s?", os.Args[2:])) {
+			write = rm(index, os.Args[1:])
+		}
 	case "status":
-		status(index, os.Args[1:])
+		status(index, os.Args[2:])
 	default:
 		fmt.Println("Unkown command")
 	}
 
 	if write == true {
-		writeIndex(STORAGE_PATH, index)
+		err = writeIndex(STORAGE_PATH, index)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
