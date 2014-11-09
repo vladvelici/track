@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	STORAGE_PATH = "./data.json"
+	STORAGE_PATH = "/Users/vlad/go/src/github.com/vladvelici/track/data.json"
 )
 
 func confirm(msg string) bool {
@@ -29,9 +29,24 @@ func confirm(msg string) bool {
 	}
 }
 
+var helpMessage = `track helps track your time.
+Usage: track <command> <arguments>
+
+List of commands:
+
+init            initialise index (and delete previous one)
+delete          delete index
+work <proj>     start working on a project <proj>
+start <proj>    same as work <proj>
+stop            stop working on current project (if any)
+status          print all projects, selecting current one
+add <proj>..    add a new project <proj>, or a list of projects
+rm <proj>..     remove a project <proj> or a list of projects
+`
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Should have a flag.")
+		help()
 		os.Exit(1)
 	}
 
@@ -75,11 +90,7 @@ func main() {
 			fmt.Println(err)
 		}
 	case "stop":
-		if len(os.Args) != 3 {
-			fmt.Println("Please use `track stop <project-name>`")
-			return
-		}
-		write, err = index.StopWorking(os.Args[2])
+		write, err = index.StopWorking()
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -90,10 +101,13 @@ func main() {
 		}
 	case "rm":
 		if confirm(fmt.Sprintf("Delete projects %s?", os.Args[2:])) {
-			write = rm(index, os.Args[1:])
+			write, err = index.RemoveProjects(os.Args[1:])
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	case "status":
-		status(index, os.Args[2:])
+		index.PrintStatus()
 	default:
 		fmt.Println("Unkown command")
 	}
@@ -127,4 +141,9 @@ func writeIndex(path string, index *Index) error {
 		return err
 	}
 	return ioutil.WriteFile(path, raw, 0644)
+}
+
+// print help message
+func help() {
+	fmt.Println(helpMessage)
 }

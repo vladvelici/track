@@ -41,6 +41,27 @@ func (i *Index) Status(project string) int {
 	return proj.Status()
 }
 
+func (i *Index) CurrentProject() (*Project, string) {
+	for name, proj := range i.Slots {
+		if proj.Status() == StatusWorking {
+			return proj, name
+		}
+	}
+	return nil, ""
+}
+
+// Print current status on terminal
+func (i *Index) PrintStatus() {
+	for name, proj := range i.Slots {
+		if proj.Status() == StatusWorking {
+			fmt.Print(" -> ")
+		} else {
+			fmt.Print("    ")
+		}
+		fmt.Printf("%s\n", name)
+	}
+}
+
 // Get the last work entry from a project. Returns nil if it has none
 // or the project doesn't exist.
 func (i *Index) LastWorkEntry(project string) *Work {
@@ -59,10 +80,10 @@ func (i *Index) StartWorking(project string) (bool, error) {
 	return proj.Work()
 }
 
-func (i *Index) StopWorking(project string) (bool, error) {
-	proj, ok := i.Slots[project]
-	if !ok {
-		return false, fmt.Errorf("Project %s does not exist. Add it with `track add %s`.", project, project)
+func (i *Index) StopWorking() (bool, error) {
+	proj, _ := i.CurrentProject()
+	if proj == nil {
+		return false, fmt.Errorf("Not currently working on any project.")
 	}
 	return proj.Stop()
 }
@@ -88,6 +109,24 @@ func (index *Index) AddProjects(projects []string) (bool, error) {
 	return write, nil
 }
 
+// Remove a project from the index.
+func (index *Index) RemoveProjects(projects []string) (bool, error) {
+	if len(projects) < 1 {
+		return false, fmt.Errorf("Please use `track rm <project-name> [<project-name> ...]`")
+	}
+
+	write := false
+	for _, p := range projects {
+		p = strings.ToLower(p)
+		_, ok := index.Slots[p]
+		write = write || ok
+		delete(index.Slots, p)
+	}
+
+	return write, nil
+}
+
+// Type Project represents a project with all its work entries.
 type Project []*Work
 
 // Returns the last work entry or nil if there's none.
@@ -145,27 +184,4 @@ func createIndex(path string) (*Index, error) {
 // Delete the index. Ask the user before calling this function.
 func deleteIndex(path string) error {
 	return os.Remove(path)
-}
-
-// Print the current status of the system on the screen.
-func status(index *Index, projects []string) {}
-
-// Stop working on the current project. Returns true if the state has changed.
-func stop(index *Index) bool { return false }
-
-func rm(index *Index, projects []string) bool {
-	if len(projects) < 1 {
-		fmt.Println("Please use `track rm <project-name> [<project-name> ...]`")
-		return false
-	}
-
-	write := false
-	for _, p := range projects {
-		p = strings.ToLower(p)
-		_, ok := index.Slots[p]
-		write = write || ok
-		delete(index.Slots, p)
-	}
-
-	return write
 }
